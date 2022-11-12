@@ -99,8 +99,9 @@ export const userLogin = async (req, res) => {
             "SELECT user_id FROM user WHERE phone =?",
             [phone]
           );
+
           const alreadyInserted = await database.RunQuery(
-            "SELECT date  FROM mood_history WHERE user_id =? LIMIT 1",
+            "SELECT date , mood FROM mood_history WHERE user_id =? LIMIT 1",
             [user[0].user_id]
           );
 
@@ -120,6 +121,7 @@ export const userLogin = async (req, res) => {
             createdAt: hashedpassword[0].inserted,
             accesstoken: accesstoken,
             mood: remData ? "1" : "0",
+            latestMood: remData ? null : alreadyInserted[0].mood,
           });
         } else {
           res.status(400).send("Invalid credentials");
@@ -151,15 +153,16 @@ export const insertMood = async (req, res) => {
     if (response.length === 0) {
       return res.status(400).send("No user Found");
     } else {
-      const aleradyInserted = await database.RunQuery(
-        "SELECT date , time FROM mood_history WHERE user_id =? LIMIT 1",
+      const alreadyInserted = await database.RunQuery(
+        "SELECT date , time FROM mood_history WHERE user_id =? ORDER BY date DESC",
         [user_id]
       );
 
+      console.log(alreadyInserted);
       const remTime =
-        parseInt(new Date().getTime()) - parseInt(aleradyInserted[0].date) >
+        parseInt(new Date().getTime()) - parseInt(alreadyInserted[0].date) >
         6 * 60 * 60 * 1000;
-      if (!remTime && aleradyInserted.length > 0) {
+      if (!remTime && alreadyInserted.length > 0) {
         return res.status(400).send("Rem Time");
       }
       const insert = await database.RunQuery(
@@ -188,7 +191,7 @@ export const getMoodHistory = async (req, res) => {
       return res.status(400).send("please provide valid request");
     } else {
       const response = await database.RunQuery(
-        "SELECT * FROM mood_history WHERE user_id=? ORDER BY date ASC",
+        "SELECT * FROM mood_history WHERE user_id=? ORDER BY date DESC",
         [user_id]
       );
       res.status(200).send(response);
@@ -198,26 +201,30 @@ export const getMoodHistory = async (req, res) => {
   }
 };
 
-// export const checkMoodAdd = async (req, res) => {
-//   try {
-//     const { user_id } = req.body;
-//     const aleradyInserted = await database.RunQuery(
-//       "SELECT date , time FROM mood_history WHERE user_id =? LIMIT 1",
-//       [user_id]
-//     );
-//     if (
-//       parseInt(new Date().getTime() - parseInt(aleradyInserted[0].date)) >
-//       6 * 60 * 60 * 1000
-//     ) {
-//       console.log(new Date().getTime() - parseInt(aleradyInserted[0].date));
-//       res.status(200).send("1");
-//     } else {
-//       res.status(200).send("0");
-//     }
-//   } catch (error) {
-//     res.status(400).send(error);
-//   }
-// };
+export const getStreak = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    if (Object.keys(req.body).length === 0 || user_id == undefined) {
+      return res.status(400).send("please provide valid request");
+    } else {
+      const response = await database.RunQuery(
+        "SELECT * FROM mood_history WHERE user_id=? ORDER BY date DESC",
+        [user_id]
+      );
+      let streak = 0;
+      response.every((item) => {
+        if (item.mood.toLowerCase() !== "happy") {
+          return false;
+        }
+        streak = streak + 1;
+        return true;
+      });
+      res.status(200).send(`${streak}`);
+    }
+  } catch (error) {
+    res.status(404).send(error);
+  }
+};
 
 export const insertToDo = async (req, res) => {
   try {

@@ -52,12 +52,12 @@ let roomList = [
 ];
 let num = 1;
 io.on("connection", (socket) => {
-  socket.join(room);
-  socket.current_room = room;
   var room = "room" + num;
-  if (io.sockets.adapter.rooms.get(room).size >= 20) {
+  while (io.sockets.adapter.rooms.get(room).size >= 15) {
     num = num + 1;
   }
+  socket.join(room);
+  socket.current_room = room;
 
   socket.on("send-message", ({ message, roomName }) => {
     socket.to(room).emit("receive-message", message);

@@ -4,6 +4,7 @@ import {
   fecthTodoItem,
   fetchTodo,
   getMoodHistory,
+  getStreak,
   insertMood,
   insertToDo,
   insertTodoItem,
@@ -22,12 +23,12 @@ router.post("/register", userRegister);
 router.post("/login", userLogin);
 router.get("/getuser", verify, insertMood);
 router.post("/addmood", insertMood);
-// router.get("/checkAddMood", verify, checkMoodAdd);
+router.post("/getmoodhistory", getMoodHistory);
+router.post("/getmoodstreak", getStreak);
 router.post("/addtodo", verify, insertToDo);
 router.post("/gettodo", verify, fetchTodo);
 router.post("/gettodoitem", verify, fecthTodoItem);
 router.post("/completetodo", completeTodo);
 router.post("/addtodoitem", verify, insertTodoItem);
-router.post("/getmoodhistory", getMoodHistory);
 
 export default router;
