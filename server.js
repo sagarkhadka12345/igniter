@@ -6,8 +6,10 @@ import dotenv from "dotenv";
 import cors from "cors";
 import pointRoutes from "./Routes/pointRoutes.js";
 import journalRoutes from "./Routes/journalRoutes.js";
-import { Server, Socket } from "socket.io";
+import { socketAuth } from "./socketauth.js";
+import { Server } from "socket.io";
 import http from "http";
+import { verify } from "./Verify/verifyToken.js";
 
 dotenv.config();
 const app = express();
@@ -15,11 +17,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-const httpServer = http.createServer(app);
-httpServer.listen(process.env.PORT, () =>
-  console.log(`Listening on Port ${process.env.PORT}`)
-);
 
 app.use((req, res, next) => {
   console.log(
@@ -33,6 +30,11 @@ app.use((req, res, next) => {
   });
   next();
 });
+const httpServer = http.createServer(app);
+
+httpServer.listen(3000, () =>
+  console.log(`Listening on Port ${process.env.PORT}`)
+);
 
 const io = new Server(httpServer, {
   cors: {
@@ -40,27 +42,85 @@ const io = new Server(httpServer, {
   },
 });
 let roomList = [
-  "1def",
-  "2ghi",
-  "3iom",
-  "4kef",
-  "5xyz",
-  "6aue",
-  "7qwe",
-  "8zxm",
-  "9abc",
+  "Sagarmatha",
+  "Annapurna",
+  "Kanchanjunga",
+  "Dhaulagiri",
+  "Manaslu",
 ];
-let num = 1;
+let num = 0;
+let indexOfSender = 0;
+let users = [];
+let chats = {};
+
+io.use(socketAuth);
+
 io.on("connection", (socket) => {
-  var room = "room" + num;
-  while (io.sockets.adapter.rooms.get(room).size >= 15) {
+  console.log("connected");
+  while (
+    io.sockets.adapter.rooms.get(roomList[num]) &&
+    io.sockets.adapter.rooms.get(roomList[num]).keys.length >= 15
+  ) {
     num = num + 1;
   }
-  socket.join(room);
-  socket.current_room = room;
+  socket.join(roomList[num]);
 
-  socket.on("send-message", ({ message, roomName }) => {
-    socket.to(room).emit("receive-message", message);
+  if (chats.hasOwnProperty(roomList[num])) {
+    chats[roomList[num]].push({
+      user_id: socket.user.user_id,
+      message: `A new user connected`,
+      location: socket.user.location,
+      socketid: socket.id,
+    });
+  } else {
+    chats[roomList[num]] = [
+      {
+        user_id: socket.user.user_id,
+        message: `A new user connected`,
+        location: socket.user.location,
+        socketid: socket.id,
+      },
+    ];
+  }
+
+  socket.emit("get-history", {
+    room: roomList[num],
+    members:
+      io.sockets.adapter.rooms.get(roomList[num]) &&
+      io.sockets.adapter.rooms.get(roomList[num]).size,
+    chat: chats[roomList[num]],
+  });
+  io.to(roomList[num]).emit("receive-join", {
+    user_id: socket.user.user_id,
+    message: "A new user connected:",
+    members:
+      io.sockets.adapter.rooms.get(roomList[num]) &&
+      io.sockets.adapter.rooms.get(roomList[num]).size,
+    location: socket.user.location,
+  });
+
+  socket.on("join", (room, user) => {
+    io.to(roomList[num]).emit(`New User Connected:`);
+    indexOfSender = users.findIndex((item) => item.user_id === user.user_id);
+    if (indexOfSender > -1) {
+      return (users[indexOfSender] = item);
+    } else {
+      return users.push(item);
+    }
+  });
+
+  socket.on("send-message", ({ message }) => {
+    chats[roomList[num]].push({
+      user_id: socket.user.user_id,
+      message: message,
+      location: socket.user.location,
+    });
+
+    io.to(roomList[num]).emit("receive-message", {
+      user_id: socket.user.user_id,
+      message: message,
+      location: socket.user.location,
+    });
   });
   socket.on("disconnect", () => {
     console.log("user disconnected");

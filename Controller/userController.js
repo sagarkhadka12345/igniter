@@ -84,10 +84,12 @@ export const userLogin = async (req, res) => {
           password,
           hashedpassword[0].password
         );
+
         const accesstoken = jwt.sign(
           {
             user_id: hashedpassword[0].user_id,
             full_name: hashedpassword[0].full_name,
+            location: hashedpassword[0].location,
           },
           process.env.ACCESS_TOKEN,
           {
@@ -158,22 +160,23 @@ export const insertMood = async (req, res) => {
         [user_id]
       );
 
-      console.log(alreadyInserted);
       const remTime =
-        parseInt(new Date().getTime()) - parseInt(alreadyInserted[0].date) >
+        parseInt(new Date().getTime()) -
+          parseInt(alreadyInserted[0] && alreadyInserted[0].date) >
         6 * 60 * 60 * 1000;
       if (!remTime && alreadyInserted.length > 0) {
         return res.status(400).send("Rem Time");
-      }
-      const insert = await database.RunQuery(
-        "INSERT INTO mood_history VALUES (?,?,?,?,?)",
-        [mood_id, user_id, mood, new Date().getTime(), new Date().getHours()]
-      );
-      console.log("insert");
-      if (insert.affectedRows > 0) {
-        return res.status(200).send("Mood Inserted");
       } else {
-        return res.status(400).send("Insertion error");
+        console.log("Here");
+        const insert = await database.RunQuery(
+          "INSERT INTO mood_history VALUES (?,?,?,?,?)",
+          [mood_id, user_id, mood, new Date().getTime(), new Date().getHours()]
+        );
+        if (insert.affectedRows > 0) {
+          return res.status(200).send("Mood Inserted");
+        } else {
+          return res.status(400).send("Insertion error");
+        }
       }
     }
     // else{
@@ -191,7 +194,7 @@ export const getMoodHistory = async (req, res) => {
       return res.status(400).send("please provide valid request");
     } else {
       const response = await database.RunQuery(
-        "SELECT * FROM mood_history WHERE user_id=? ORDER BY date DESC",
+        "SELECT * FROM mood_history WHERE user_id=? ORDER BY date DESC LIMIT 30",
         [user_id]
       );
       res.status(200).send(response);
@@ -232,6 +235,7 @@ export const insertToDo = async (req, res) => {
     if (Object.keys(req.body).length === 0 || user_id == undefined) {
       return res.status(400).send("please provide valid request");
     } else {
+      console.log();
       const userfound = await database.RunQuery(
         "SELECT user_id FROM user WHERE user_id = ?",
         [user_id]
@@ -348,6 +352,47 @@ export const completeTodo = async (req, res) => {
           return res.status(200).send("Todo updated");
         }
       }
+    }
+  } catch (error) {
+    res.status(404).send(error);
+  }
+};
+
+export const fecthAllTodoItem = async (req, res) => {
+  try {
+    const { todo_id } = req.body;
+    if (Object.keys(req.body).length === 0 || todo_id == undefined) {
+      return res.status(400).send("please provide valid request");
+    } else {
+      const userTodo = await database.RunQuery(
+        "SELECT * FROM todo_list WHERE todo_id =? ",
+        [todo_id, new Date().getDate()]
+      );
+
+      res.status(200).send(userTodo);
+    }
+  } catch (error) {
+    res.status(404).send(error);
+  }
+};
+
+export const todoCompletedpercentage = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    if (Object.keys(req.body).length === 0 || user_id == undefined) {
+      return res.status(400).send("please provide valid request");
+    } else {
+      const userTodo = await database.RunQuery(
+        "SELECT * FROM todo_list WHERE todo_id = ? AND inserted =?",
+        [todo_id, new Date().getDate()]
+      );
+
+      const completeTodo = await database.RunQuery(
+        "SELECT * FROM todo_list WHERE todo_id = ? AND completed= 'true' AND inserted = ?",
+        [todo_id, new Date().getDate()]
+      );
+
+      return res.status(200).send(completeTodo.length / userTodo.length);
     }
   } catch (error) {
     res.status(404).send(error);

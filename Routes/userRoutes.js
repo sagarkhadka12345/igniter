@@ -8,6 +8,7 @@ import {
   insertMood,
   insertToDo,
   insertTodoItem,
+  todoCompletedpercentage,
   userLogin,
   userRegister,
 } from "../Controller/userController.js";
@@ -27,6 +28,7 @@ router.post("/getmoodhistory", getMoodHistory);
 router.post("/getmoodstreak", getStreak);
 router.post("/addtodo", verify, insertToDo);
 router.post("/gettodo", verify, fetchTodo);
+router.post("/getpercentage", todoCompletedpercentage);
 router.post("/gettodoitem", verify, fecthTodoItem);
 router.post("/completetodo", completeTodo);
 router.post("/addtodoitem", verify, insertTodoItem);

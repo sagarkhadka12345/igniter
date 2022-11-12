@@ -19,35 +19,6 @@ export const getjournal = async (req, res) => {
   }
 };
 
-export const insertJournal = async (req, res) => {
-  try {
-    const { user_id, journal } = req.body;
-    if (Object.keys(req.body).length === 0 || journal == undefined) {
-      return res.status(404).send("Please Enter valid Data");
-    } else {
-      const user = await database.RunQuery(
-        "SELECT user_id FROM user WHERE user_Id = ?",
-        [user_id]
-      );
-      if (user.length === 0) {
-        return res.status(400).send("No User Found");
-      }
-
-      const journal_id = crypto.randomBytes(12).toString("hex");
-      const insertion = await database.RunQuery(
-        "INSERT INTO journal VALUES (?,?,?,?)",
-        [journal_id, user_id, journal, new Date()]
-      );
-      if (insertion.affectedRows > 0) {
-        return res.status(200).send("Inserted successfully");
-      }
-      res.status(400).send("Insertion failed");
-    }
-  } catch (error) {
-    res.status(404).send(error);
-  }
-};
-
 export const gettodayjournal = async (req, res) => {
   try {
     const { user_id } = req.body;
@@ -58,13 +29,17 @@ export const gettodayjournal = async (req, res) => {
         "SELECT * FROM journal WHERE user_id =?",
         [user_id]
       );
+
       let todayjournal = [];
+      console.log(response[0].inserted);
+
       response.forEach((item) => {
-        if (moment(item.inserted).day() === moment().day()) {
+        if (parseInt(item.inserted) === parseInt(new Date().getDate())) {
           todayjournal.push(item);
         }
       });
-      res.status(200).status(todayjournal);
+
+      return res.status(200).send(todayjournal);
     }
   } catch (error) {
     res.status(404).send(error);
@@ -103,7 +78,7 @@ export const updatejournal = async (req, res) => {
 export const getjournalbydate = async (req, res) => {
   try {
     const { user_id, date } = req.body;
-    console.log(user_id, date);
+
     if (
       Object.keys(req.body).length === 0 ||
       date == undefined ||
@@ -115,18 +90,35 @@ export const getjournalbydate = async (req, res) => {
         "SELECT * FROM journal WHERE user_id =?",
         [user_id]
       );
-     
+
       let todayjournal = [];
+      console.log(response[0].inserted);
+
       response.forEach((item) => {
-        if (moment(item.inserted).day() === moment(date).day()) {
+        if (parseInt(item.inserted) === parseInt(date)) {
           todayjournal.push(item);
         }
       });
-      res.status(200).status(todayjournal);
+
+      return res.status(200).send(todayjournal);
     }
   } catch (error) {
     res.status(404).send(error);
   }
 };
-
-
+export const getAllJournal = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    if (Object.keys(req.body).length === 0 || user_id == undefined) {
+      return res.status(400).send("Please provide valid inputs");
+    } else {
+      const journals = await database.RunQuery(
+        "SELECT * FROM journal WHERE user_id =?",
+        [user_id]
+      );
+      res.status(200).send(journals);
+    }
+  } catch (error) {
+    res.status(404).send(error);
+  }
+};

@@ -1,10 +1,10 @@
-import express from "express";
-import env from "dotenv";
-import jwt from "jsonwebtoken";
+const express = require("express");
+const env = require("dotenv");
+const jwt = require("jsonwebtoken");
 
 env.config();
 
-export const verify = (req, res, next) => {
+const verify = (req, res, next) => {
   try {
     const authHeaders = req.headers["authorization"];
     const token = authHeaders && authHeaders.split(" ")[1];
@@ -21,3 +21,5 @@ export const verify = (req, res, next) => {
     return res.status(404).send("User Accesstoken Expired");
   }
 };
+
+module.exports = verify;
