@@ -10,7 +10,7 @@ dotenv.config();
 export const userRegister = async (req, res) => {
   try {
     const { fullname, phone, password, location } = req.body;
-   
+
     if (
       Object.keys(req.body).length === 0 ||
       fullname == undefined ||
@@ -230,7 +230,7 @@ export const insertToDo = async (req, res) => {
         [user_id]
       );
       if (userfound.length === 0) {
-        return res.status(400).send("NO user Found");
+        return res.status(400).send("No user Found");
       } else {
         const todos = await database.RunQuery(
           "SELECT * FROM todo WHERE user_id =? ",
@@ -255,6 +255,7 @@ export const insertToDo = async (req, res) => {
 
 export const insertTodoItem = async (req, res) => {
   try {
+    console.log(req.body);
     const { todo_id, todo, completion_time } = req.body;
     if (Object.keys(req.body).length === 0 || todo_id == undefined) {
       return res.status(400).send("please provide valid request");
@@ -266,11 +267,11 @@ export const insertTodoItem = async (req, res) => {
       if (resp.length === 0) {
         return res.status(400).send("Todo not found");
       } else {
+        const todos_item_id = crypto.randomBytes(12).toString("hex");
         const todos = await database.RunQuery(
-          "INSERT INTO todo_list VALUES (?,?,?,?,?)",
-          [todo_id, todo, completion_time, "false", new Date()]
+          "INSERT INTO todo_list VALUES (?,?,?,?,?,?)",
+          [todos_item_id, todo_id, todo, "23:00", "false", new Date().getDate()]
         );
-        console.log(todos);
         if (todos.affectedRows === 0 || !todos) {
           res.status(400).send("Insertion failed");
         } else {
@@ -306,9 +307,11 @@ export const fecthTodoItem = async (req, res) => {
       return res.status(400).send("please provide valid request");
     } else {
       const userTodo = await database.RunQuery(
-        "SELECT * FROM todo WHERE user_id =? ",
-        [user_id]
+        "SELECT * FROM todo_list WHERE todo_id =?  AND inserted LIKE ?",
+        [todo_id, new Date().getDate()]
       );
+
+      res.status(200).send(userTodo);
     }
   } catch (error) {
     res.status(404).send(error);
@@ -316,25 +319,27 @@ export const fecthTodoItem = async (req, res) => {
 };
 export const completeTodo = async (req, res) => {
   try {
-    const { todo_id, user_id } = req.body;
-    if (Object.keys(req.body).length === 0 || todo_id == undefined) {
+    const { todo_item_id } = req.body;
+    if (Object.keys(req.body).length === 0 || todo_item_id == undefined) {
       return res.status(400).send("please provide valid request");
-    }
-    const response = await database.RunQuery(
-      "SELECT * FROM todo WHERE todo_id = ? AND user_id",
-      [todo_id, user_id]
-    );
-    if (response.length === 0) {
-      return res.status(400).send("No Todo Found");
     } else {
-      const updation = await database.RunQuery(
-        "UPDATE todo SET completed = 'true' WHERE user_id=? AND todo_id=?",
-        [user_id, todo_id]
+      console.log(todo_item_id);
+      const responseTodo = await database.RunQuery(
+        "SELECT * FROM todo_list WHERE todo_item_id=?",
+        [todo_item_id]
       );
-      if (updation.affectedRows === 0) {
-        return res.status(400).send("Insertion failed");
+      if (responseTodo.length === 0) {
+        return res.status(400).send("No Todo Found");
       } else {
-        return res.status(200).send("Todo updated");
+        const updation = await database.RunQuery(
+          "UPDATE todo_list SET completed = 'true' WHERE  todo_item_id=?",
+          [todo_item_id]
+        );
+        if (updation.affectedRows === 0) {
+          return res.status(400).send("Insertion failed");
+        } else {
+          return res.status(200).send("Todo updated");
+        }
       }
     }
   } catch (error) {
